@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useApiPage } from '../hooks/useApiPage';
+import Pagination from './Pagination';
 import { adminApi } from '../services/adminApi';
 import { apiPost, apiResult } from '../services/apiClient';
 import { contentApi } from '../services/contentApi';
@@ -12,15 +14,8 @@ export default function FlowChartAdminPanel() {
     const [explanation, setExplanation] = useState('');
     const [bulkData, setBulkData] = useState('');
     const [loading, setLoading] = useState(false);
-    const [existingQuestions, setExistingQuestions] = useState<any[]>([]);
-
-    useEffect(() => {
-        async function fetchQuestions() {
-            const { data } = await apiResult(contentApi.flowcharts());
-            if (data) setExistingQuestions(data);
-        }
-        fetchQuestions();
-    }, []);
+    const questionsQuery = useApiPage(contentApi.flowcharts);
+    const existingQuestions = questionsQuery.page.items;
 
     const processQuestion = async (q: { question: string; answer: string; explanation: string }) => {
         return apiPost<{ nodes: unknown[]; edges: unknown[] }>('/api/v1/ai/flowchart', {
@@ -43,7 +38,7 @@ export default function FlowChartAdminPanel() {
                     explanation:q.explanation, generated_flowchart:await processQuestion(q)});
             }
             await adminApi.createFlowcharts(rows);
-            setExistingQuestions(await contentApi.flowcharts());
+            questionsQuery.refresh(true);
             alert('Bulk upload successful!');
             setBulkData('');
         } catch (e) {
@@ -69,6 +64,7 @@ export default function FlowChartAdminPanel() {
 
             if (error) throw error;
             
+            questionsQuery.refresh(true);
             alert('Flowchart question created successfully!');
             setQuestion('');
             setAnswer('');
@@ -84,6 +80,7 @@ export default function FlowChartAdminPanel() {
     return (
         <div className="p-8 bg-slate-50 min-h-screen">
             <h1 className="text-3xl font-bold mb-6">Admin: Upload Flow Chart Question</h1>
+            <Pagination query={questionsQuery} label="Flowcharts" />
             <div className="space-y-4">
                 <select value={subjectId} onChange={(e) => setSubjectId(e.target.value as SubjectId)} className="w-full p-2 border rounded">
                     <option value="">None / General</option>

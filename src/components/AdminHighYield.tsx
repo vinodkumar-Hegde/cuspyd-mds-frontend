@@ -1,7 +1,8 @@
 import { Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useApiPage } from '../hooks/useApiPage';
+import Pagination from './Pagination';
 import { adminApi } from '../services/adminApi';
-import { apiResult } from '../services/apiClient';
 import { contentApi } from '../services/contentApi';
 import { SUBJECTS } from '../types';
 
@@ -12,17 +13,9 @@ export default function AdminHighYield() {
   const [qFile, setQFile] = useState<File | null>(null);
   const [aFile, setAFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [topics, setTopics] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetchTopics();
-  }, []);
-
-  const fetchTopics = async () => {
-    const { data, error } = await apiResult(contentApi.highYield());
-    if (error) alert(error.message);
-    if (data) setTopics(data);
-  };
+  const topicQuery = useApiPage(contentApi.highYield);
+  const topics = topicQuery.page.items;
+  const fetchTopics = () => topicQuery.refresh(true);
 
   const uploadFile = async (file: File) => {
     return (await adminApi.upload('high-yield', file)).publicUrl;
@@ -62,6 +55,7 @@ export default function AdminHighYield() {
   return (
     <div className="p-8 space-y-6">
       <h2 className="text-2xl font-bold">Manage High Yield Images</h2>
+      <Pagination query={topicQuery} label="High yield" />
       <div className="space-y-4">
         <input className="w-full p-3 border rounded" placeholder="Topic Name" onChange={e => setTopic(e.target.value)} />
         <select className="w-full p-3 border rounded" onChange={e => setSubject(e.target.value)}>

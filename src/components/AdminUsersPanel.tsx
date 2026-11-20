@@ -1,37 +1,14 @@
 import { Download, Filter, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useApiPage } from '../hooks/useApiPage';
+import Pagination from './Pagination';
 import { adminApi } from '../services/adminApi';
-import { apiResult } from '../services/apiClient';
 
 export default function AdminUsersPanel() {
-  const [profiles, setProfiles] = useState<any[]>([]);
-  const [filteredProfiles, setFilteredProfiles] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  useEffect(() => {
-    fetchProfiles();
-  }, []);
-
-  useEffect(() => {
-    setFilteredProfiles(
-        profiles.filter(p => 
-            p.name?.toLowerCase().includes(filter.toLowerCase()) || 
-            p.email?.toLowerCase().includes(filter.toLowerCase())
-        )
-    );
-  }, [filter, profiles]);
-
-  const fetchProfiles = async () => {
-    const { data, error } = await apiResult(adminApi.users());
-    if (error) setErrorMessage(error.message);
-    if (data) {
-        setProfiles(data);
-        setFilteredProfiles(data);
-    }
-    setLoading(false);
-  };
+  const loadUsers = useCallback((offset:number, signal:AbortSignal) => adminApi.users(offset, signal, filter), [filter]);
+  const query = useApiPage(loadUsers);
+  const filteredProfiles = query.page.items;
 
   const exportCSV = () => {
     const headers = ['Created At', 'Name', 'Email', 'Mobile', 'Role', 'College'];
@@ -53,14 +30,12 @@ export default function AdminUsersPanel() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
-      {errorMessage && <p role="alert">{errorMessage}</p>}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <Users className="text-purple-600" /> User Profiles ({filteredProfiles.length})
+            <Users className="text-purple-600" /> Users ({query.page.total})
         </h2>
         <div className="flex gap-2">
             <div className="relative">
@@ -73,10 +48,11 @@ export default function AdminUsersPanel() {
                 />
             </div>
             <button onClick={exportCSV} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2">
-                <Download size={16} /> Export CSV
+                <Download size={16} /> Export this page
             </button>
         </div>
       </div>
+      <Pagination query={query} label="Users" />
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>

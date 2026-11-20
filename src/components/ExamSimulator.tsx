@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from 'react';
 import { examApi } from '../services/examApi';
 import { EXAM_SECONDS_PER_QUESTION, Question, SubjectId, SUBJECTS } from '../types';
 
-export default function ExamSimulator({ test, onComplete }: { test: any, onComplete: (results: any) => void }) {
+export default function ExamSimulator({ test, onComplete, onExit }: { test: any, onComplete: (results: any) => void, onExit:()=>void }) {
   const submissionId = useRef(crypto.randomUUID());
   const [questions, setQuestions] = useState<Omit<Question, 'correctOption' | 'explanation'>[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ export default function ExamSimulator({ test, onComplete }: { test: any, onCompl
 
   useEffect(() => {
     const fetchQuestions = async () => {
-        if (!test || !test.questions || test.questions.length === 0) {
+        if (!test?.id) {
             setLoading(false);
             return;
         }
@@ -98,7 +98,7 @@ export default function ExamSimulator({ test, onComplete }: { test: any, onCompl
   }
 
   if (questions.length === 0) {
-      return <div className="fixed inset-0 flex items-center justify-center bg-white font-bold text-red-500">{submitError || 'No questions found for this test.'}</div>;
+      return <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-white font-bold text-red-500"><p role="alert">{submitError || 'No questions found for this test.'}</p><button onClick={onExit} className="rounded-xl bg-slate-900 p-4 text-white">Back to exams</button></div>;
   }
 
   const currentQuestion = questions[currentIndex];

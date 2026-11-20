@@ -5,10 +5,13 @@
 
 import { Activity, BookOpen, Download, FileText, GitBranch, LayoutGrid, Plus, Settings, Users, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { adminApi, mapQuestion, mapTest, questionPayload } from '../services/adminApi';
+import { adminApi, mapTest, questionPayload } from '../services/adminApi';
 import { generateQuestionsFromPYQs } from '../services/aiGenerator';
 import { Question, SubjectId, SUBJECTS, TestGenerated } from '../types';
 import AdminExportPanel from './AdminExportPanel';
+import { useApiPage } from '../hooks/useApiPage';
+import Pagination from './Pagination';
+import QuestionBank from './QuestionBank';
 import AdminFeatureToggle from './AdminFeatureToggle';
 import AdminHighYield from './AdminHighYield';
 import AdminUsersPanel from './AdminUsersPanel';
@@ -22,29 +25,26 @@ import TestArchitect from './TestArchitect';
 export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<'pool' | 'generator' | 'tests' | 'users' | 'activity' | 'highYield' | 'features' | 'export' | 'flowChartAdmin' | 'syndromes'>('pool');
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [selectedSubject, setSelectedSubject] = useState<SubjectId>('anatomy');
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId>(Object.keys(SUBJECTS)[0] || '');
   const [selectedYear, setSelectedYear] = useState<'BDS-I' | 'BDS-II' | 'BDS-III' | 'BDS-IV'>('BDS-I');
-  const [tests, setTests] = useState<TestGenerated[]>([]);
+  const testsQuery = useApiPage(adminApi.tests);
+  const tests = testsQuery.page.items.map(mapTest);
   const [editingTest, setEditingTest] = useState<TestGenerated | null>(null);
 
   const [error, setError] = useState('');
   const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiCount, setAiCount] = useState(10);
-  useEffect(() => { void fetchQuestions(); void fetchTests(); }, []);
+  useEffect(() => { void fetchQuestions(); }, []);
 
   const fetchQuestions = async () => {
     try {
-      const [data, counts] = await Promise.all([adminApi.questions(), adminApi.questionCounts()]);
-      setQuestions(data.map(mapQuestion));
+      const counts = await adminApi.questionCounts();
       setQuestionCounts(counts);
       setError('');
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to load question bank'); }
   };
-  const fetchTests = async () => {
-    try { setTests((await adminApi.tests()).map(mapTest).filter(t => t.status !== 'ARCHIVED')); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Unable to load exams'); }
-  };
+  const fetchTests = () => testsQuery.refresh();
   const handleUpdateTest = async () => {
     if (!editingTest) return;
     try {
@@ -162,6 +162,7 @@ export default function AdminPanel() {
               />
             </div>
             <ManualQuestionForm onSuccess={fetchQuestions} />
+            <QuestionBank subjectId={selectedSubject} year={selectedYear} revision={Object.values(questionCounts).reduce((sum, value) => sum + value, 0)} />
             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
               <h3 className="text-xl font-bold text-slate-900 mb-6">Database Overview</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
@@ -188,6 +189,7 @@ export default function AdminPanel() {
         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-2xl font-black text-slate-900">Exam Control Center</h2>
+            <Pagination query={testsQuery} label="Admin exams" />
             <div className="flex gap-2">
                 <label className="text-sm">AI questions<input type="number" min={1} max={20} value={aiCount} onChange={e => setAiCount(Number(e.target.value))} className="w-16 border rounded p-2" /></label>
                 <button 

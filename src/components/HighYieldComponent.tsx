@@ -1,6 +1,8 @@
 import { Activity, ArrowLeft, BookOpen, Brain, BriefcaseMedical, Building2, ChevronLeft, ChevronRight, Heart, Ligature, Microscope, Scale, Search, ShieldCheck, Smile, Stethoscope, Syringe, Users, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useApiPage } from '../hooks/useApiPage';
+import Pagination from './Pagination';
 import { apiResult, mediaUrl } from '../services/apiClient';
 import { contentApi } from '../services/contentApi';
 import { SUBJECTS, SubjectId } from '../types';
@@ -41,50 +43,33 @@ export default function HighYieldComponent({ onBack }: { onBack: () => void }) {
     const [errorMessage, setErrorMessage] = useState('');
     const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
     const [flipStates, setFlipStates] = useState<Record<string, boolean>>({});
-    const [topics, setTopics] = useState<any[]>([]);
+    const loadTopics = useCallback((offset:number, signal:AbortSignal) => contentApi.highYield(offset, signal, selectedSubject || undefined), [selectedSubject]);
+    const topicQuery = useApiPage(loadTopics, selectedSubject !== null);
+    const topics = topicQuery.page.items;
     const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
-    const [allTopics, setAllTopics] = useState<any[]>([]); // New state
     const [currentIndex, setCurrentIndex] = useState(0);
 
-    // ... inside useEffect for availableSubjects:
 
     useEffect(() => {
         setCurrentIndex(0);
         setFlipStates({});
-    }, [selectedSubject]);
+    }, [selectedSubject, topicQuery.page.offset]);
 
     useEffect(() => {
         async function fetchAvailableSubjects() {
-            const { data, error } = await apiResult(contentApi.highYield());
+            const { data, error } = await apiResult(contentApi.highYieldSubjects());
             if (error) {
                 setErrorMessage(error.message);
                 return;
             }
 
-            const subjectIds = Array.from(new Set(data.map(item => item.subject_id)));
-            const subjects = Object.values(SUBJECTS).filter(s => subjectIds.includes(s.id));
-            
-            setAvailableSubjects(subjects);
-            setAllTopics(data);
+            setAvailableSubjects(data.map(item => ({
+                ...SUBJECTS[item.subject_id], id:item.subject_id,
+                name:SUBJECTS[item.subject_id]?.name || item.subject_id, total:item.total,
+            })));
         }
         fetchAvailableSubjects();
     }, []);
-
-    useEffect(() => {
-        if (selectedSubject) {
-            async function fetchTopics() {
-                const { data, error } = await apiResult(contentApi.highYield(selectedSubject));
-                if (error) {
-                    setErrorMessage(error.message);
-                } else if (data) {
-                    setTopics(data);
-                }
-            }
-            fetchTopics();
-        } else {
-            setTopics([]);
-        }
-    }, [selectedSubject]);
 
     const toggleFlip = (id: string) => {
         setFlipStates(prev => ({ ...prev, [id]: !prev[id] }));
@@ -103,7 +88,7 @@ export default function HighYieldComponent({ onBack }: { onBack: () => void }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {availableSubjects.map(subject => {
                         const Icon = getIcon(subject.id);
-                        const count = allTopics.filter(t => t.subject_id === subject.id).length;
+                        const count = subject.total;
                         return (
                         <motion.div 
                             key={subject.id}
@@ -139,7 +124,8 @@ export default function HighYieldComponent({ onBack }: { onBack: () => void }) {
                 <h2 className="text-4xl font-black text-stone-900 mb-2">{SUBJECTS[selectedSubject!].name}</h2>
             </div>
             
-            {topics.length > 0 && (
+            <Pagination query={topicQuery} label="Topics" />
+            {topics[currentIndex] && (
                 <div className="flex flex-col items-center w-full">
                     
                     <div className="flex flex-col items-center w-full mb-8">
@@ -149,7 +135,7 @@ export default function HighYieldComponent({ onBack }: { onBack: () => void }) {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                         >
-                            {flipStates[topics[currentIndex]?.id] ? `A-${currentIndex + 1}` : `Q-${currentIndex + 1}`}
+                            {flipStates[topics[currentIndex]?.id] ? `A-${topicQuery.page.offset + currentIndex + 1}` : `Q-${topicQuery.page.offset + currentIndex + 1}`}
                         </motion.h3>
                         <motion.div 
                             key={topics[currentIndex]?.id}
@@ -186,7 +172,7 @@ export default function HighYieldComponent({ onBack }: { onBack: () => void }) {
                             <ChevronLeft size={28} />
                         </motion.button>
                         
-                        <span className="font-black text-violet-900 text-lg bg-white px-6 py-2 rounded-full shadow-md border-2 border-violet-100">{currentIndex + 1} / {topics.length}</span>
+                        <span className="font-black text-violet-900 text-lg bg-white px-6 py-2 rounded-full shadow-md border-2 border-violet-100">{topicQuery.page.offset + currentIndex + 1} / {topics.length}</span>
 
                         <motion.button 
                             whileHover={{ scale: 1.05, backgroundColor: "#f1f5f9" }}

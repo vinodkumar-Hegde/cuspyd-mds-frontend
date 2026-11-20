@@ -11,7 +11,7 @@ interface ManualQuestionFormProps {
 export default function ManualQuestionForm({ onSuccess }: ManualQuestionFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    subjectId: 'anatomy' as SubjectId,
+    subjectId: (Object.keys(SUBJECTS)[0] || '') as SubjectId,
     year: 'BDS-I' as 'BDS-I' | 'BDS-II' | 'BDS-III' | 'BDS-IV',
     text: '',
     options: ['', '', '', ''],
@@ -19,6 +19,7 @@ export default function ManualQuestionForm({ onSuccess }: ManualQuestionFormProp
     explanation: '',
     topic: '',
     image: null as File | null,
+    imagePracticeEnabled: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +40,8 @@ export default function ManualQuestionForm({ onSuccess }: ManualQuestionFormProp
           correct_option: formData.correctOption,
           explanation: formData.explanation,
           topic: formData.topic,
-          image_url: imageUrl || null
+          image_url: imageUrl || undefined,
+          image_practice_enabled: formData.imagePracticeEnabled,
         }]));
 
       if (error) throw error;
@@ -47,7 +49,7 @@ export default function ManualQuestionForm({ onSuccess }: ManualQuestionFormProp
       alert('Question uploaded successfully!');
       onSuccess();
       setFormData({
-        subjectId: 'anatomy',
+        subjectId: Object.keys(SUBJECTS)[0] || '',
         year: 'BDS-I',
         text: '',
         options: ['', '', '', ''],
@@ -55,6 +57,7 @@ export default function ManualQuestionForm({ onSuccess }: ManualQuestionFormProp
         explanation: '',
         topic: '',
         image: null,
+        imagePracticeEnabled: false,
       });
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -90,7 +93,8 @@ export default function ManualQuestionForm({ onSuccess }: ManualQuestionFormProp
         {formData.options.map((_, i) => <option key={i} value={i}>Correct Option: {String.fromCharCode(65+i)}</option>)}
       </select>
 
-      <input type="file" accept="image/*" onChange={e => setFormData({...formData, image: e.target.files?.[0] || null})} className="w-full p-3 border rounded-xl" />
+      <label className="block">Question image<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setFormData({...formData, image: e.target.files?.[0] || null, imagePracticeEnabled:false})} className="w-full p-3 border rounded-xl" /></label>
+      <label className="flex items-center gap-2"><input type="checkbox" disabled={!formData.image} checked={formData.imagePracticeEnabled} onChange={e => setFormData({...formData, imagePracticeEnabled:e.target.checked})} />Publish for image practice</label>
       <textarea placeholder="Explanation" value={formData.explanation} onChange={e => setFormData({...formData, explanation: e.target.value})} className="w-full p-3 border rounded-xl" rows={2} />
       
       <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50">

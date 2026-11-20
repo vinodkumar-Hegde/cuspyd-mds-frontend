@@ -1,20 +1,17 @@
 import { AlertCircle, CheckCircle2, ChevronLeft, Trophy } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
+import type { ExamResult } from '../services/examApi';
 
-export default function ExamResults({ results, onExit, onReattempt, onLater }: { results: any, onExit: () => void, onReattempt?: () => void, onLater?: () => void }) {
+export default function ExamResults({ results, onExit, onReattempt, onLater }: { results: ExamResult, onExit: () => void, onReattempt?: () => void, onLater?: () => void }) {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // ...
-  const isLive = results.test?.id;
-  const test = isLive ? results.test : results.tests;
-  // If historical, the 'answers' column now contains the full results object
-  const resultsData = isLive ? results.results : results.answers;
-  const answers = resultsData.answers;
-  const score = resultsData.score;
-  const correct = resultsData.correct;
-  const wrong = resultsData.wrong;
-  const unattempted = resultsData.unattempted;
+  const test = results.test;
+  const answers = results.results?.answers || {};
+  const score = results.results?.score ?? 'Unavailable';
+  const correct = results.results?.correct ?? '—';
+  const wrong = results.results?.wrong ?? '—';
+  const unattempted = results.results?.unattempted ?? '—';
   
   const questions = results.questions || [];
 
@@ -27,7 +24,7 @@ export default function ExamResults({ results, onExit, onReattempt, onLater }: {
       >
         <ChevronLeft size={24} />
       </button>
-      {onReattempt && (
+      {onReattempt && test.id && (
         <>
             <button 
                 onClick={() => setShowConfirmation(true)}
@@ -64,6 +61,7 @@ export default function ExamResults({ results, onExit, onReattempt, onLater }: {
         <div className="space-y-8">
           <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
             <h2 className="text-3xl font-black text-slate-900 mb-2">Exam Results: {test?.title}</h2>
+            {results.notice && <p role="status" className="my-4 rounded-xl bg-amber-50 p-4 text-amber-900">{results.notice}</p>}
             <div className="flex gap-4">
               <p className="text-slate-500 font-bold mb-6 text-xl">Score: <span className='text-3xl text-slate-900'>{score}</span></p>
               <p className="text-emerald-600 font-bold mb-6">Correct: {correct}</p>
@@ -129,7 +127,7 @@ export default function ExamResults({ results, onExit, onReattempt, onLater }: {
         onClick={onExit}
         className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black hover:bg-slate-800"
       >
-        Return to High Yield Questions
+        Back to app
       </button>
     </div>
   );

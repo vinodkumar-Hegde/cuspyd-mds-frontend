@@ -3,9 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type SubjectId = 
-  | 'anatomy' | 'physiology_biochem' | 'dental_anatomy' | 'pathology_micro' | 'pharmacology' | 'medicine' | 'surgery'
-  | 'materials' | 'oral_path' | 'oral_med_rad' | 'pedodontics' | 'orthodontics' | 'periodontology' | 'prosthodontics' | 'conservative_endo' | 'oral_surgery' | 'public_health';
+export type SubjectId = string;
 
 export interface SubjectInfo {
   id: SubjectId;
@@ -33,6 +31,7 @@ export interface Question {
   explanation: string;
   topic?: string;
   imageUrl?: string;
+  imagePracticeEnabled?: boolean;
 }
 
 export interface TestGenerated {
@@ -41,7 +40,7 @@ export interface TestGenerated {
   type: 'RANKER' | 'MOCK' | 'MT' | 'ST' | 'GT';
   questions: string[]; // List of question IDs
   weightage: Record<string, number>;
-  status: 'DRAFT' | 'LOCKED' | 'PUBLISHED' | 'SCHEDULED' | 'ACTIVE' | 'ARCHIVED';
+  status: 'DRAFT' | 'LOCKED' | 'PUBLISHED' | 'SCHEDULED' | 'ARCHIVED';
   subjectId?: SubjectId; // Added subjectId
   publishDate?: string; // ISO string
   autoKeyReleaseDate?: string; // ISO string
@@ -52,6 +51,7 @@ export interface TestGenerated {
 }
 
 export interface UserProfile {
+  id: string;
   name: string;
   email: string;
   mobile: string;

@@ -59,6 +59,19 @@ export function apiPatch<T>(path: string, value: unknown) {
 }
 export function apiDelete(path: string) { return apiRequest<void>(path, {method: 'DELETE'}); }
 
+export interface Page<T> { items: T[]; total: number; limit: number; offset: number }
+export async function apiPage<T>(path: string, offset = 0, signal?: AbortSignal): Promise<Page<T>> {
+  const limit = 50;
+  const response = await apiFetch(`${path}${path.includes('?') ? '&' : '?'}limit=${limit}&offset=${offset}`, {signal});
+  const count = response.headers.get('X-Total-Count');
+  const total = count === null ? NaN : Number(count);
+  const items = await response.json();
+  if (!Number.isInteger(total) || total < 0 || !Array.isArray(items)) {
+    throw new ApiError(502, 'The service returned an invalid response. Please try again.');
+  }
+  return {items, total, limit, offset};
+}
+
 /** Explicit result handling for forms that display their own error messages. */
 export async function apiResult<T>(request: Promise<T>) {
   try { return { data: await request, error: null }; }

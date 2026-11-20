@@ -27,6 +27,10 @@ function AppContent() {
   const [features, setFeatures] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    setCompletedResults(null); setCurrentTest(null); setIsExaming(false); setFeatures({});
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!user) return;
     const fetchFeatures = () => contentApi.featureSettings().then(data => {
       setFeatures(Object.fromEntries(data.map(f => [f.feature_key, f.is_visible])));
@@ -59,7 +63,7 @@ function AppContent() {
           setCompletedResults(null);
         }} 
         onReattempt={() => {
-           setCurrentTest(completedResults.test || completedResults.tests);
+           setCurrentTest(completedResults.test);
            setCompletedResults(null);
            setIsExaming(true);
         }}
@@ -76,6 +80,7 @@ function AppContent() {
       <ExamSimulator 
         test={currentTest}
         onComplete={(results) => { setCompletedResults(results); setIsExaming(false); }} 
+        onExit={() => {setCurrentTest(null); setIsExaming(false); setActiveTab('exams');}}
       />
     );
   }
@@ -93,8 +98,7 @@ function AppContent() {
       case 'history':
         return features.test_history !== false ? (
           <TestHistory onViewResult={async (session: any) => {
-            try { setCompletedResults(await examApi.result(session.id)); }
-            catch (error) { console.error('Unable to load history result:', error); }
+            setCompletedResults(await examApi.result(session.id));
           }} />
         ) : <HighYieldQuestions />;
       case 'admin':

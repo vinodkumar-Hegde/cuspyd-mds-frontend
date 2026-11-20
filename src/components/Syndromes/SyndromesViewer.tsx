@@ -1,42 +1,29 @@
 import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
-import { apiResult, mediaUrl } from '../../services/apiClient';
+import { useMemo, useState } from 'react';
+import { useApiPage } from '../../hooks/useApiPage';
+import Pagination from '../Pagination';
+import { mediaUrl } from '../../services/apiClient';
 import { contentApi } from '../../services/contentApi';
 
 export default function SyndromesViewer() {
-  const [errorMessage, setErrorMessage] = useState('');
-  const [groupedSyndromes, setGroupedSyndromes] = useState<any[]>([]);
+  const query = useApiPage(contentApi.syndromes);
+  const groupedSyndromes = useMemo(() => {
+    const grouped:Record<string, {name:string; description:string; images:string[]}> = {};
+    for (const item of query.page.items) {
+      const key = item.name.trim().toLowerCase();
+      const group = grouped[key] ||= {name:item.name, description:item.description, images:[]};
+      if (item.image_url) group.images.push(item.image_url);
+    }
+    return Object.values(grouped);
+  }, [query.page.items]);
   const [selectedSyndrome, setSelectedSyndrome] = useState<any | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    apiResult(contentApi.syndromes()).then(({ data, error }) => {
-      if (error) {
-        setErrorMessage(error.message);
-      } else {
-        if (data) {
-          const grouped = data.reduce((acc: any, curr: any) => {
-            const name = curr.name.trim().toLowerCase();
-            if (!acc[name]) {
-              acc[name] = { name: curr.name.trim(), description: curr.description, images: [] };
-            }
-            if (curr.image_url) {
-                acc[name].images.push(curr.image_url);
-            }
-            return acc;
-          }, {});
-          setGroupedSyndromes(Object.values(grouped));
-        }
-      }
-    });
-  }, []);
-
-  if (errorMessage) return <p role="alert" className="p-8 text-red-700">{errorMessage}</p>;
-  if (groupedSyndromes.length === 0) return <div className="p-8 text-center text-slate-500">No syndromes found.</div>;
-
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+      {!selectedSyndrome && <Pagination query={query} label="Syndrome images" />}
+      {!query.loading && !query.page.total && !query.error && <p>No syndromes found.</p>}
       {selectedSyndrome ? (
         <motion.div
           initial={{ opacity: 0, x: 20 }}

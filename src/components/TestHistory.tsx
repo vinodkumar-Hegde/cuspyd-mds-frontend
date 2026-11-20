@@ -1,53 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useApiPage } from '../hooks/useApiPage';
 import { examApi } from '../services/examApi';
+import Pagination from './Pagination';
 
-export default function TestHistory({ onViewResult }: { onViewResult: (results: any) => void }) {
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [groupedSessions, setGroupedSessions] = useState<Record<string, any[]>>({});
-
-  const [errorMessage, setErrorMessage] = useState('');
-  useEffect(() => {
-    fetchSessions();
-  }, []);
-
-  const fetchSessions = async () => {
-    try {
-      const data = (await examApi.history()).filter(s => s.is_completed);
-      setSessions(data);
-      setGroupedSessions(data.reduce((acc: Record<string, any[]>, s: any) => {
-        const type = s.tests?.type || 'Other';
-        (acc[type] ||= []).push(s);
-        return acc;
-      }, {}));
-    } catch (error) {setErrorMessage(error instanceof Error ? error.message : 'Unable to load history');}
-  };
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Exam History</h1>
-        {errorMessage && <p role="alert">{errorMessage}</p>}
-        {Object.entries(groupedSessions).map(([type, typeSessions]) => (
-            <div key={type} className="space-y-4">
-                <h2 className="text-xl font-bold text-slate-700">{type}</h2>
-                {typeSessions.map((session: any) => (
-                    <div key={session.id} className="bg-white p-6 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm">
-                        <div>
-                            <h3 className="font-bold text-slate-900">{session.tests?.title}</h3>
-                            <p className="text-sm text-slate-500">
-                              {session.tests?.id || "N/A"}
-                            </p>
-                        </div>
-                        <button 
-                          onClick={() => onViewResult(session)}
-                          className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl font-bold text-sm"
-                        >
-                          View Results
-                        </button>
-                    </div>
-                ))}
-            </div>
-        ))}
-        {sessions.length === 0 && <p className="text-slate-500">No completed exams yet.</p>}
-    </div>
-  );
+export default function TestHistory({onViewResult}: {onViewResult:(session:{id:string})=>Promise<void>}) {
+  const query = useApiPage(examApi.history);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function view(session:{id:string}) {
+    setBusy(true); setError('');
+    try { await onViewResult(session); }
+    catch(reason) { setError(reason instanceof Error ? reason.message : 'Unable to load result'); }
+    finally {setBusy(false);}
+  }
+  return <section className="space-y-6">
+    <h1 className="text-3xl font-bold">Exam History</h1>
+    {error && <p role="alert" className="text-red-700">{error}</p>}
+    <Pagination query={query} label="History" />
+    {query.page.items.map(session => <article key={session.id} className="flex items-center justify-between gap-4 rounded-2xl border bg-white p-6">
+      <div><h2 className="font-bold">{session.test?.title || 'Historical exam'}</h2>
+        <p className="text-sm text-slate-600">{session.type} · {session.end_time ? new Date(session.end_time).toLocaleString() : 'Time unavailable'}</p>
+      </div>
+      <button disabled={busy} onClick={() => void view(session)} className="rounded-xl bg-blue-50 px-4 py-2 font-bold text-blue-700 disabled:opacity-50">View Results</button>
+    </article>)}
+    {!query.loading && !query.error && !query.page.total && <p>No completed exams yet.</p>}
+  </section>;
 }
